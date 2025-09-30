@@ -12,6 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Payment, Booking
 from .serializers import PaymentSerializer
+from .tasks import send_booking_confirmation_email
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -87,8 +88,11 @@ class ListingViewSet(viewsets.ModelViewSet):
     queryset = Listing.objects.all()
     serializer_class = ListingSerializer
 
-
 class BookingViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing user bookings."""
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
+
+    def perform_create(self, serializer):
+        booking = serializer.save()
+        # Trigger background email task
+        send_booking_confirmation_email.delay(booking.customer.email, booking.id)
